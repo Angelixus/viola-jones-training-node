@@ -4,6 +4,8 @@ const multer = require('multer');
 const path = require('path');
 const uuid = require('uuid');
 const fs = require('fs');
+const { exec } = require("child_process");
+
 
 console.log("TEST")
 
@@ -23,8 +25,6 @@ if (!fs.existsSync(dirNegative)){
     fs.mkdirSync(dirNegative);
 }
 
-
-const { exec } = require('child_process')
 
 const app = express()
 
@@ -59,13 +59,34 @@ var uploadBadCondition = multer({ storage: storageBadCondition })
 
 
 app.post('/goodConditionImages', uploadGoodCondition.array('files'), (req, res) => {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/plain');
-    res.end('Hola Mundo');
+    exec("opencv_createsamples", (error, stdout, stderr) => {
+        if (error) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/plain');
+            res.end(`error: ${error.message}`);
+        }
+        if (stderr) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/plain');
+            res.end(`stderr: ${stderr}`);
+        }
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/plain');
+        res.end(`stdout: ${stdout}`);
+    });
+
 })
 
 app.post('/badConditionImages', uploadBadCondition.array('files'), () => {
     /*fs.readdir('./uploads', (err, files) => {
     console.log(files.length);
   });*/
+})
+
+app.get('/test', (req, res) => {
+    fs.readdir('./images/badConditions', (err, files) => {
+        files.forEach(file => {
+          console.log(file);
+        });
+      });
 })
