@@ -5,9 +5,8 @@ const path = require('path');
 const uuid = require('uuid');
 const fs = require('fs');
 const { exec } = require("child_process");
+var sizeOf = require('image-size');
 
-
-console.log("TEST")
 
 const dirBase = './images';
 const dirPositive = './images/goodConditions'
@@ -59,7 +58,37 @@ var uploadBadCondition = multer({ storage: storageBadCondition })
 
 
 app.post('/goodConditionImages', uploadGoodCondition.array('files'), (req, res) => {
-    exec("opencv_createsamples", (error, stdout, stderr) => {
+    const baseDirGood = 'images/goodConditions'
+    const goodConditionTxtName = 'pos.txt'
+    let filesLengthGood = 0;
+    fs.readdir(baseDirGood, (err, files) => {
+        if(err) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/plain');
+            res.end(`error: ${err.message}`);
+        } else {
+            let stringToWrite = ''
+            filesLengthGood = files.length
+            files.forEach(function (file) {
+                const filename = baseDirGood + '/' + file
+                var dimensions = sizeOf(filename);
+                stringToWrite = stringToWrite.concat(`${filename} 1 0 0 ${dimensions.width} ${dimensions.height}\n`)
+            });
+            stringToWrite = stringToWrite.slice(0, -1)
+            fs.writeFile('goodConditionTxtName', stringToWrite, function (err) {
+                if (err) {
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'text/plain');
+                    res.end(`error: ${err.message}`);
+                } 
+              });
+        }
+    })
+    
+    const widthWindow = 24
+    const heightWindow = 24
+    const sample = 0.9
+    exec(`opencv_createsamples -info ${goodConditionTxtName} -w ${widthWindow} -h ${heightWindow} -num ${filesLengthGood * 4} -vec pos.vec`, (error, stdout, stderr) => {
         if (error) {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/plain');
@@ -70,9 +99,23 @@ app.post('/goodConditionImages', uploadGoodCondition.array('files'), (req, res) 
             res.setHeader('Content-Type', 'text/plain');
             res.end(`stderr: ${stderr}`);
         }
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'text/plain');
-        res.end(`stdout: ${stdout}`);
+
+        exec(`opencv_traincascade -data cascade/ -vec pos.vec -bg bg.txt -w ${widthWindow} -h ${heightWindow} -numPos ${Math.imul(filesLengthGood, sample)} -numNeg ${Math.floor((Math.imul(filesLengthGood, sample)) / 2)} -numStages 10 -featureType HAAR -stageType BOOST`, (error, stdout, stderr) => {
+            if (error) {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'text/plain');
+                res.end(`error: ${error.message}`);
+            }
+            if (stderr) {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'text/plain');
+                res.end(`stderr: ${stderr}`);
+            }
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/plain')
+            res.end("Correct")
+        })
     });
 
 })
@@ -83,10 +126,10 @@ app.post('/badConditionImages', uploadBadCondition.array('files'), () => {
   });*/
 })
 
-app.get('/test', (req, res) => {
-    fs.readdir('./images/badConditions', (err, files) => {
-        files.forEach(file => {
-          console.log(file);
-        });
-      });
+app.get('/images', (req, res) => {
+    fs.readdir('./images/goodConditions', (err, files) => {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/plain');
+        res.end(`numfiles: ${files.length}`);     
+     });
 })
