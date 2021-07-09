@@ -8,7 +8,6 @@ const { exec } = require("child_process");
 var sizeOf = require('image-size');
 const { dir } = require('console');
 
-
 const dirBase = './images';
 const dirPositive = './images/goodConditions'
 const dirNegative = './images/badConditions'
@@ -73,9 +72,7 @@ app.post('/goodConditionImages', uploadGoodCondition.array('files'), (req, res) 
         const heightWindow = 24
         const sample = 0.9
 
-        console.log(`C:/Users/angel/Desktop/opencv/build/x64/vc15/bin/opencv_createsamples -info ${goodConditionTxtName} -vec pos.vec -w ${widthWindow} -h ${heightWindow} -num ${filesLengthGood * 4}`)
-
-        exec(`C:/Users/angel/Desktop/opencv/build/x64/vc15/bin/opencv_createsamples -info ${goodConditionTxtName} -vec pos.vec -w ${widthWindow} -h ${heightWindow} -num ${filesLengthGood * 4}`, (error, stdout, stderr) => {
+        exec(`opencv_createsamples -info ${goodConditionTxtName} -vec pos.vec -w ${widthWindow} -h ${heightWindow} -num ${filesLengthGood * 4}`, (error, stdout, stderr) => {
             if (error) {
                 return res.send(`error: ${error.message}`);
             }
@@ -83,10 +80,7 @@ app.post('/goodConditionImages', uploadGoodCondition.array('files'), (req, res) 
                 //return res.send(`stderr: ${stderr}`);
             }
 
-            console.log(stdout)
-            console.log(`C:/Users/angel/Desktop/opencv/build/x64/vc15/bin/opencv_traincascade -data cascade/ -vec pos.vec -bg bg.txt -w ${widthWindow} -h ${heightWindow} -numPos ${Math.floor(filesLengthGood * sample)} -numNeg ${Math.floor((filesLengthGood * sample) / 2)} -numStages 10 -featureType HAAR -stageType BOOST`)
-
-            exec(`C:/Users/angel/Desktop/opencv/build/x64/vc15/bin/opencv_traincascade -data cascade/ -vec pos.vec -bg bg.txt -w ${widthWindow} -h ${heightWindow} -numPos ${Math.floor(filesLengthGood * sample)} -numNeg ${Math.floor((filesLengthGood * sample) / 2)} -numStages 10 -featureType HAAR -stageType BOOST`, (error, stdout, stderr) => {
+            exec(`opencv_traincascade -data cascade/ -vec pos.vec -bg bg.txt -w ${widthWindow} -h ${heightWindow} -numPos ${Math.floor(filesLengthGood * sample)} -numNeg ${Math.floor((filesLengthGood * sample) / 2)} -numStages 10 -featureType HAAR -stageType BOOST`, (error, stdout, stderr) => {
                 if (error) {
                     return res.send(`error: ${error.message}`);
                 }
@@ -115,14 +109,60 @@ app.post('/goodConditionImages', uploadGoodCondition.array('files'), (req, res) 
                         })
                     })
                   })
+
+                  fs.readdir('./cascade', (err, files) => {
+                    if (err) {
+                        return res.send(`error: ${err.message}`);
+                    }
+                    files.forEach((file) => {
+                        fs.unlink(path.join('./cascade', file), err => {
+                            if (err) {
+                                return res.send(`error: ${err.message}`);
+                            }
+                        })
+                    })
+                  })
+
+                  fs.readdir('./cascade', (err, files) => {
+                    if (err) {
+                        return res.send(`error: ${err.message}`);
+                    }
+                    files.forEach((file) => {
+                        fs.unlink(path.join('./cascade', file), err => {
+                            if (err) {
+                                return res.send(`error: ${err.message}`);
+                            }
+                        })
+                    })
+                  })
+
+                  fs.unlink('pos.txt', err => {
+                        if (err) {
+                            return res.send(`error: ${err.message}`);
+                        }
+                    })
+                
+                    fs.unlink('pos.vec', err => {
+                        if (err) {
+                            return res.send(`error: ${err.message}`);
+                        }
+                    })
                   return;
             })
         });
     })
 })
 
-app.get('/images', (req, res) => {
+app.get('/imagesGoodList', (req, res) => {
     fs.readdir('./images/goodConditions', (err, files) => {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/plain');
+        res.end(`numfiles: ${files.length}`);     
+     });
+})
+
+app.get('/imagesBadList', (req, res) => {
+    fs.readdir('./images/badConditions', (err, files) => {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'text/plain');
         res.end(`numfiles: ${files.length}`);     
