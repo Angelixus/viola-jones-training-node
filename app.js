@@ -54,18 +54,18 @@ app.post('/goodConditionImages', uploadGoodCondition.array('files'), (req, res) 
             files.forEach(function(file) {
                 const filename = baseDirGood + '/' + file
                 var dimensions = sizeOf(filename);
-                stringToWrite = stringToWrite.concat(`${filename} 1 0 0 ${dimensions.width} ${dimensions.height}\n`)
+                stringToWrite = stringToWrite.concat(`${filename} 1 5 5 ${dimensions.width - 10} ${dimensions.height - 10}\n`)
             });
             stringToWrite = stringToWrite.slice(0, -1)
             fs.writeFile(goodConditionTxtName, stringToWrite, function(err) {
                 if (err) {
                     return res.status(500).json(`error: ${err.message}`);
                 } else {
-                    const widthWindow = 60
-                    const heightWindow = 40
+                    const widthWindow = 40
+                    const heightWindow = 25
                     const sample = 0.9
 
-                    exec(`C:/Users/angel/Desktop/opencv/build/x64/vc14/bin/opencv_createsamples -info ${goodConditionTxtName} -vec pos.vec -w ${widthWindow} -h ${heightWindow} -num ${filesLengthGood}`, (error, stdout, stderr) => {
+                    exec(`opencv_createsamples -info ${goodConditionTxtName} -vec pos.vec -w ${widthWindow} -h ${heightWindow} -num ${filesLengthGood}`, (error, stdout, stderr) => {
                         if (error) {
                             return res.status(500).json(`error: ${error.message}`);
                         }
@@ -74,7 +74,7 @@ app.post('/goodConditionImages', uploadGoodCondition.array('files'), (req, res) 
                             console.log(stderr)
                         }
 
-                        exec(`C:/Users/angel/Desktop/opencv/build/x64/vc14/bin/opencv_traincascade -data cascade/ -vec pos.vec -bg bg.txt -w ${widthWindow} -h ${heightWindow} -numPos ${Math.floor(filesLengthGood * sample)} -numNeg ${Math.floor((filesLengthGood * sample) * 1.5)} -numStages 7 -featureType HAAR -stageType BOOST`, (error, stdout, stderr) => {
+                        exec(`opencv_traincascade -data cascade/ -vec pos.vec -bg bg.txt -w ${widthWindow} -h ${heightWindow} -numPos ${Math.floor(filesLengthGood * sample)} -numNeg ${Math.floor((filesLengthGood * sample) * 1.5)} -numStages 4 -featureType HAAR -stageType BOOST -minHitRate 0.998 -maxFalseAlarmRate 0.15 -precalcValBufSize 40196 -precalcIdxBufSize 4096`, (error, stdout, stderr) => {
                             if (error) {
                                 return res.status(500).json(`error: ${error.message}`);
                             }
@@ -134,5 +134,21 @@ app.post('/goodConditionImages', uploadGoodCondition.array('files'), (req, res) 
                 }
             });
         }
+    })
+})
+
+app.get('/imagesGoodList', (req, res) => {
+    fs.readdir('./images/goodConditions', (err, files) => {
+        return res.send("numImages: " + files.length)
+    })
+})
+
+app.get('/trainingList', (req, res) => {
+    resu = ''
+    fs.readdir('./cascade', (err, files) => {
+        files.forEach((file) => {
+            resu = resu + file + ' '
+        })
+        return res.send("files: " + resu)
     })
 })
